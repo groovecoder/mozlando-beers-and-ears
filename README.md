@@ -1,7 +1,8 @@
-webdev-contributors
-===================
+Mozlando Beers & Ears
+=====================
 
-Code for discovering webdev contributors
+Awards badges.mozilla.org badges to Mozillians who complete the Mozlando Beers
+& Ears crawl with Untappd.
 
 Run it
 ------
@@ -12,4 +13,4 @@ Install requirements:
 
 Run:
 
-    python get_contributors.py
+    python award_badges.py
