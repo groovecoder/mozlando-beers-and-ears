@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from datetime import datetime
+from email.utils import parsedate
 import hashlib
 import json
 import os
@@ -24,7 +26,13 @@ UNTAPPD_USERS = [
     'groovecoder',
 ]
 
+MOZLANDO_START_DATETIME = datetime(2015, 12, 7)
+MOZLANDO_END_DATETIME = datetime(2015, 12, 11, 23, 59, 59, 999999)
 MOZLANDO_BEERS_AND_EARS_BADGE = 'mozlando-beers-and-ears'
+EPCOT_MIN_LATITUDE = 28.375647
+EPCOT_MAX_LATITUDE = 28.367444
+EPCOT_MIN_LONGITUDE = -81.553245
+EPCOT_MAX_LONGITUDE = -81.545134
 
 
 def main():
@@ -36,17 +44,44 @@ def main():
         return
 
     for user in UNTAPPD_USERS:
-        print 'Fetching user activity for %s' % user
+        beers = []
+        beer_ids = []
 
-        checkins = untappd_api_get('user/checkins/%s' % user, dict(limit=50),
+        print 'Fetching user activity for %s' % user
+        checkins = untappd_api_get('user/checkins/%s' % user, dict(limit=5),
                                    'activity', DEFAULT_CACHE_AGE)
+
         for checkin in checkins['response']['checkins']['items']:
-            # if the checkin.created_at within Mozlando
-            # and venue.location.lat|lng within Epcot World Showcase
-            # and beer.bid is unique
-            # then add the checkin to the running total
+            checkin_timetuple = parsedate(checkin.get('created_at'))
+            checkin_beer = checkin.get('beer')
+            checkin_location = checkin.get('venue').get('location')
+            if (( # checked in during Mozlando date/time
+                 MOZLANDO_START_DATETIME.timetuple() < checkin_timetuple and
+                 checkin_timetuple < MOZLANDO_END_DATETIME.timetuple()
+                )
+                and # checked in at Epcot
+                (
+                 (
+                  EPCOT_MIN_LATITUDE <= checkin_location['lat'] and
+                  checkin_location['lat'] <= EPCOT_MAX_LATITUDE
+                 )
+                 and
+                 (
+                  EPCOT_MIN_LONGITUDE <= checkin_location['lng'] and
+                  checkin_location['lng'] <= EPCOT_MAX_LONGITUDE
+                 )
+                )
+                and # checked in a unique beer
+                (
+                 checkin_beer['bid'] not in beer_ids
+                )
+               ):
+                beers.append(checkin_beer)
+                beer_ids.append(checkin_beer['bid'])
+            # if there are 12 check-ins, add the user's email to the list
+        if len(beers) >= 12:
+            # add the user's email to the list
             pass
-        # if there are 12 check-ins, add the user's email the list
 
     if not BADGES_VALET_USERNAME or not BADGES_VALET_PASSWORD:
         print ('You must set BADGES_VALET_USERNAME and BADGES_VALET_PASSWORD'
