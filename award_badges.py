@@ -40,26 +40,30 @@ def main():
         return
 
     for user in UNTAPPD_USERS:
-        print 'Fetching user activity for %s' % user
+        beers = []
+        beer_ids = []
 
+        print 'Fetching user activity for %s' % user
         checkins = untappd_api_get('user/checkins/%s' % user, dict(limit=5),
                                    'activity', DEFAULT_CACHE_AGE)
+
         for checkin in checkins['response']['checkins']['items']:
             checkin_timetuple = parsedate(checkin.get('created_at'))
-            if (
-                (MOZLANDO_START_DATETIME.timetuple() < checkin_timetuple and
+            checkin_beer = checkin.get('beer')
+            if ((
+                 MOZLANDO_START_DATETIME.timetuple() < checkin_timetuple and
                  MOZLANDO_END_DATETIME.timetuple() < checkin_timetuple
-                ) and
-                (
+                ) and (
                  # and venue.location.lat|lng within Epcot World Showcase
                  True
-                ) and
-                 # and beer.bid is unique
-                 True
+                ) and (
+                 checkin_beer['bid'] not in beer_ids
+                )
                ):
                 # then add the checkin to the running total
-                pass
-        # if there are 12 check-ins, add the user's email the list
+                beers.append(checkin_beer)
+                beer_ids.append(checkin_beer['bid'])
+            # if there are 12 check-ins, add the user's email to the list
 
     if not BADGES_VALET_USERNAME or not BADGES_VALET_PASSWORD:
         print ('You must set BADGES_VALET_USERNAME and BADGES_VALET_PASSWORD'
