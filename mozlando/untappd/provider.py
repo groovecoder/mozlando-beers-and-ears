@@ -1,3 +1,5 @@
+from django.core.urlresolvers import reverse
+
 from allauth.socialaccount import providers
 from allauth.socialaccount.providers.base import ProviderAccount
 from allauth.socialaccount.providers.oauth2.provider import OAuth2Provider
@@ -18,8 +20,16 @@ class UntappdAccount(ProviderAccount):
 class UntappdProvider(OAuth2Provider):
     id = 'untappd'
     name = 'Untappd'
-    package = 'mozlando.untappd.provider'
+    package = 'mozlando.untappd'
     account_class = UntappdAccount
+
+    def get_auth_params(self, request, action):
+        params = super(UntappdProvider, self).get_auth_params(request, action)
+        # Untappd uses redirect_url instead of redirect_uri
+        params['redirect_url'] = request.build_absolute_uri(
+            reverse(self.id + '_callback')
+        )
+        return params
 
     def extract_uid(self, data):
         return str(data['id'])
