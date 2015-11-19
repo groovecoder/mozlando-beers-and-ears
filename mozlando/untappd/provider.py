@@ -1,5 +1,6 @@
 from django.core.urlresolvers import reverse
 
+from allauth.account.models import EmailAddress
 from allauth.socialaccount import providers
 from allauth.socialaccount.providers.base import ProviderAccount
 from allauth.socialaccount.providers.oauth2.provider import OAuth2Provider
@@ -32,12 +33,22 @@ class UntappdProvider(OAuth2Provider):
         return params
 
     def extract_uid(self, data):
-        return str(data['id'])
+        return str(data['response']['user']['uid'])
 
     def extract_common_fields(self, data):
-        return dict(email=data.get('email'),
-                    username=data.get('login'),
-                    name=data.get('name'))
+        user = data['response']['user']
+        return dict(
+            username=user['user_name'],
+            name=user['first_name'] + ' ' + user['last_name']
+        )
+
+    def extract_email_addresses(self, data):
+        ret = [EmailAddress(
+            email=data['response']['user']['settings']['email_address'],
+            verified=True,
+            primary=True
+        )]
+        return ret
 
 
 providers.registry.register(UntappdProvider)
