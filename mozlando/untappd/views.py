@@ -26,6 +26,7 @@ class UntappdOAuth2Client(OAuth2Client):
         data = {'client_id': self.consumer_key,
                 'redirect_url': self.callback_url,
                 'grant_type': 'authorization_code',
+                'response_type': 'code',
                 'client_secret': self.consumer_secret,
                 'code': code}
         params = None
