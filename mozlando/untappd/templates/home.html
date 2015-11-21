@@ -4,7 +4,9 @@
   {% get_social_accounts request.user as accounts %}
 
   {% if accounts.untappd %}
-    You already signed in with Untappd. Go enjoy your beers and ears!
+    You've signed in with Untappd. Go enjoy your beers and ears!
+  {% else %}
+  You're signed in, but not with Untappd? Are you signed in as the admin? <a href="{% url 'account_logout' %}">Sign out</a>
   {% endif %}
 {% else %}
   <a href="{% provider_login_url "untappd" %}">Sign in with Untappd</a>
