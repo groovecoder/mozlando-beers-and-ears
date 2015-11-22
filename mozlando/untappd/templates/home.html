@@ -1,13 +1,69 @@
 {% load socialaccount %}
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Mozlando: Beers & Ears</title>
 
-{% if request.user.is_authenticated %}
-  {% get_social_accounts request.user as accounts %}
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  {% if accounts.untappd %}
-    You've signed in with Untappd. Go enjoy your beers and ears!
-  {% else %}
-  You're signed in, but not with Untappd? Are you signed in as the admin? <a href="{% url 'account_logout' %}">Sign out</a>
-  {% endif %}
-{% else %}
-  <a href="{% provider_login_url "untappd" %}">Sign in with Untappd</a>
-{% endif %}
+  <link rel="stylesheet" href="/static/css/normlize.css">
+  <link rel="stylesheet" href="/static/css/skeleton.css">
+  <style>
+    body {
+      background: #f8f0e3;
+    }
+    .container {
+      max-width: 611px;
+      text-align: center;
+    }
+    .button {
+      padding: 0;
+    }
+    a img {
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <section class="header">
+    <img src="/static/img/mozlando-2015-header.jpg">
+  </section>
+  <h1>Beers &amp; Ears</h1>
+  <p>If you’ve got some kid-free time at DisneyWorld, it can be a pretty fun place to get a drink.<br/>So, some Mozillians are planning to do a <a href="http://beersandears.net/2013/09/beer-tours-beers-around-the-world-showcase/" target="_blank">"Beers Around the World Showcase"</a> crawl.</p>
+
+  <div class="value-props row">
+
+    <div class="four columns value-prop">
+    {% if request.user.is_authenticated %}
+      {% get_social_accounts request.user as accounts %}
+
+      {% if accounts.untappd %}
+      <p>You've signed in with Untappd ...</p>
+      {% else %}
+      <p>You're signed in, but not with Untappd? Are you signed in as the admin? <a href="{% url 'account_logout' %}">Sign out</a></p>
+      {% endif %}
+    {% else %}
+      <a class="button" href="{% provider_login_url "untappd" %}">Sign in with <img src="/static/img/untappd_icon.png" width="16" height="16"/> Untappd</a>
+    {% endif %}
+    </div>
+
+    <div class="four columns value-prop">
+      <p>Check in 12 different beers at venues inside Epcot during Mozlando.</p>
+    </div>
+
+    <div class="four columns value-prop">
+      Get the badge:<br/>
+      <img src="/static/img/mozlando-beers-ears-badge2.png" width="100" height="100">
+    </div>
+
+  </div>
+
+  <div class="row">
+    <a href="https://github.com/groovecoder/mozlando-beers-and-ears">code</a> by <a href="https://twitter.com/groovecoder">@groovecoder</a>
+  </div>
+
+</div>
+</body>
+</div>
+</html>
