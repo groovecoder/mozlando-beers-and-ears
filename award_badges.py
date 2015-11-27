@@ -26,14 +26,22 @@ UNTAPPD_USERS = [
     'groovecoder',
 ]
 
-MOZLANDO_START_DATETIME = datetime(2015, 12, 7)
-MOZLANDO_END_DATETIME = datetime(2015, 12, 11, 23, 59, 59, 999999)
+# Mozlando values
+START_DATETIME = datetime(2015, 12, 7)
+END_DATETIME = datetime(2015, 12, 11, 23, 59, 59, 999999)
 MOZLANDO_BEERS_AND_EARS_BADGE = 'mozlando-beers-and-ears'
-EPCOT_MIN_LATITUDE = 28.375647
-EPCOT_MAX_LATITUDE = 28.367444
-EPCOT_MIN_LONGITUDE = -81.553245
-EPCOT_MAX_LONGITUDE = -81.545134
+MIN_LATITUDE = 28.367444
+MAX_LATITUDE = 28.375647
+MIN_LONGITUDE = -81.553245
+MAX_LONGITUDE = -81.545134
 
+# Test values (Cherry Street in Tulsa this week)
+# START_DATETIME = datetime(2015, 11, 23)
+# END_DATETIME = datetime(2015, 11, 27, 23, 59, 59, 999999)
+# MIN_LATITUDE = 36.136844
+# MAX_LATITUDE = 36.143845
+# MIN_LONGITUDE = -95.97546
+# MAX_LONGITUDE = -95.940098
 
 def main():
     emails_to_award = []
@@ -55,42 +63,43 @@ def main():
             checkin_timetuple = parsedate(checkin.get('created_at'))
             checkin_beer = checkin.get('beer')
             checkin_location = checkin.get('venue').get('location')
-            if (( # checked in during Mozlando date/time
-                 MOZLANDO_START_DATETIME.timetuple() < checkin_timetuple and
-                 checkin_timetuple < MOZLANDO_END_DATETIME.timetuple()
-                )
-                and # checked in at Epcot
-                (
+            checkin_lat = checkin_location.get('lat')
+            checkin_lng = checkin_location.get('lng')
+            if ( # checked in during Mozlando date/time
+                 START_DATETIME.timetuple() < checkin_timetuple and
+                 checkin_timetuple < END_DATETIME.timetuple()
+                ):
+                print 'Match Checkin: Time: {0}'.format(checkin_timetuple)
+                if ( # checked in at Epcot
                  (
-                  EPCOT_MIN_LATITUDE <= checkin_location['lat'] and
-                  checkin_location['lat'] <= EPCOT_MAX_LATITUDE
+                  MIN_LATITUDE <= checkin_lat and
+                  checkin_lat <= MAX_LATITUDE
                  )
                  and
                  (
-                  EPCOT_MIN_LONGITUDE <= checkin_location['lng'] and
-                  checkin_location['lng'] <= EPCOT_MAX_LONGITUDE
+                  MIN_LONGITUDE <= checkin_lng and
+                  checkin_lng <= MAX_LONGITUDE
                  )
-                )
-                and # checked in a unique beer
-                (
-                 checkin_beer['bid'] not in beer_ids
-                )
-               ):
-                beers.append(checkin_beer)
-                beer_ids.append(checkin_beer['bid'])
+                   ):
+                    print 'Match Checkin: Lat: %s Lng: %s' % (checkin_lat,
+                                                              checkin_lng)
+                    if ( # checked in a unique beer
+                     checkin_beer['bid'] not in beer_ids
+                    ):
+                        print 'Match Checkin: Beer: %s' % checkin_beer
+                        beers.append(checkin_beer)
+                        beer_ids.append(checkin_beer['bid'])
             # if there are 12 check-ins, add the user's email to the list
-        if len(beers) >= 12:
+        if len(beers) >= 2:
+            print "Found 2 matching beers; badge time!"
             # add the user's email to the list
-            pass
 
-    if not BADGES_VALET_USERNAME or not BADGES_VALET_PASSWORD:
-        print ('You must set BADGES_VALET_USERNAME and BADGES_VALET_PASSWORD'
-               ' for awarding badges.')
-        return
-    else:
-        award_badge(MOZLANDO_BEERS_AND_EARS_BADGE, emails_to_award)
-
-    #print_contributors_by_level(contributors)
+            if not BADGES_VALET_USERNAME or not BADGES_VALET_PASSWORD:
+                print ('You must set BADGES_VALET_USERNAME and '
+                       'BADGES_VALET_PASSWORD for awarding badges.')
+                return
+            else:
+                award_badge(MOZLANDO_BEERS_AND_EARS_BADGE, emails_to_award)
 
 
 def untappd_api_url(url, params=None):
