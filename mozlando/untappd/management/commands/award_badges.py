@@ -9,6 +9,10 @@ import time
 import urllib
 from os.path import dirname
 
+from django.core.management.base import BaseCommand
+
+from allauth.socialaccount.models import SocialAccount
+
 
 # See: https://untappd.com/api/docs
 UNTAPPD_BASE_URL = 'https://api.untappd.com/v4'
@@ -21,10 +25,6 @@ BADGES_VALET_USERNAME = os.getenv('BADGES_VALET_USERNAME', None)
 BADGES_VALET_PASSWORD = os.getenv('BADGES_VALET_PASSWORD', None)
 
 CACHE_PATH_TMPL = 'cache/%s/%s'
-
-UNTAPPD_USERS = [
-    'groovecoder',
-]
 
 # Mozlando values
 START_DATETIME = datetime(2015, 12, 7)
@@ -43,7 +43,10 @@ MAX_LONGITUDE = -81.545134
 # MIN_LONGITUDE = -95.97546
 # MAX_LONGITUDE = -95.940098
 
-def main():
+
+class Command(BaseCommand):
+
+  def handle(self, *args, **options):
     emails_to_award = []
 
     if not UNTAPPD_CLIENT_ID or not UNTAPPD_CLIENT_SECRET:
@@ -51,13 +54,16 @@ def main():
                ' environment variables to use Untappd API.')
         return
 
-    for user in UNTAPPD_USERS:
+    for account in SocialAccount.objects.filter(provider='untappd'):
+        username = account.user.username
         beers = []
         beer_ids = []
 
-        print 'Fetching user activity for %s' % user
-        checkins = untappd_api_get('user/checkins/%s' % user, dict(limit=5),
-                                   'activity', DEFAULT_CACHE_AGE)
+        print 'Fetching user activity for %s' % username
+        checkins = untappd_api_get(
+            'user/checkins/%s' % username, dict(limit=5), 'activity',
+            DEFAULT_CACHE_AGE
+        )
 
         for checkin in checkins['response']['checkins']['items']:
             checkin_timetuple = parsedate(checkin.get('created_at'))
@@ -186,7 +192,3 @@ def award_badge(badge_slug, emails):
 def file_age(fn):
     """Get the age of a file in seconds"""
     return time.time() - os.stat(fn).st_mtime
-
-
-if __name__ == '__main__':
-    main()
