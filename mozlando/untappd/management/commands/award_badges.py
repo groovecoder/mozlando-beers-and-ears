@@ -68,9 +68,12 @@ class Command(BaseCommand):
         for checkin in checkins['response']['checkins']['items']:
             checkin_timetuple = parsedate(checkin.get('created_at'))
             checkin_beer = checkin.get('beer')
-            checkin_location = checkin.get('venue').get('location')
-            checkin_lat = checkin_location.get('lat')
-            checkin_lng = checkin_location.get('lng')
+            if hasattr(checkin.get('venue'), 'location'):
+                checkin_location = checkin.get('venue').get('location')
+                checkin_lat = checkin_location.get('lat')
+                checkin_lng = checkin_location.get('lng')
+            else:
+                continue
             if ( # checked in during Mozlando date/time
                  START_DATETIME.timetuple() < checkin_timetuple and
                  checkin_timetuple < END_DATETIME.timetuple()
