@@ -65,6 +65,10 @@ class Command(BaseCommand):
             DEFAULT_CACHE_AGE
         )
 
+        if 'checkins' not in checkins['response']:
+            print "User %s has no checkins." % username
+            continue
+
         for checkin in checkins['response']['checkins']['items']:
             checkin_timetuple = parsedate(checkin.get('created_at'))
             checkin_beer = checkin.get('beer')
@@ -73,6 +77,7 @@ class Command(BaseCommand):
                 checkin_lat = checkin_location.get('lat')
                 checkin_lng = checkin_location.get('lng')
             else:
+                print "%s checkin had no location." % checkin_beer['beer_name']
                 continue
             if ( # checked in during Mozlando date/time
                  START_DATETIME.timetuple() < checkin_timetuple and
