@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/1.8/ref/settings/
 """
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+from datetime import datetime
 import os
 
 from decouple import config
@@ -135,3 +136,48 @@ AUTHENTICATION_BACKENDS = (
 SITE_ID = 1
 
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = config('ACCOUNT_DEFAULT_HTTP_PROTOCOL', 'http')
+
+DEFAULT_CACHE_AGE = int(os.getenv('DEFAULT_CACHE_AGE', 60 * 60 * 24 * 7))
+CACHE_PATH_TMPL = 'cache/%s/%s'
+
+# See: https://untappd.com/api/docs
+UNTAPPD_BASE_URL = 'https://api.untappd.com/v4'
+UNTAPPD_CLIENT_ID = os.getenv('UNTAPPD_CLIENT_ID', None)
+UNTAPPD_CLIENT_SECRET = os.getenv('UNTAPPD_CLIENT_SECRET', None)
+
+CREDLY_BASE_URL = 'https://api.credly.com/v1.1'
+CREDLY_API_KEY = os.getenv('CREDLY_API_KEY', None)
+CREDLY_API_SECRET = os.getenv('CREDLY_API_SECRET', None)
+CREDLY_USERNAME = os.getenv('CREDLY_USERNAME', None)
+CREDLY_PASSWORD = os.getenv('CREDLY_PASSWORD', None)
+CREDLY_BADGE_ID = 61615
+
+# Mozlando values
+# NUM_BEERS = 12
+# START_DATETIME = datetime(2015, 12, 7)
+# END_DATETIME = datetime(2015, 12, 11, 23, 59, 59, 999999)
+# MOZLANDO_BEERS_AND_EARS_BADGE = 'mozlando-beers-and-ears'
+# MIN_LATITUDE = 28.367444
+# MAX_LATITUDE = 28.375647
+# MIN_LONGITUDE = -81.553245
+# MAX_LONGITUDE = -81.545134
+
+# Test values (Cherry Street in Tulsa Nov 23-27)
+NUM_BEERS = 2
+START_DATETIME = datetime(2015, 11, 23)
+END_DATETIME = datetime(2015, 11, 27, 23, 59, 59, 999999)
+MIN_LATITUDE = 36.136844
+MAX_LATITUDE = 36.143845
+MIN_LONGITUDE = -95.97546
+MAX_LONGITUDE = -95.940098
+CREDLY_BADGE_ID = 61628
+
+# Test values (Portland Nov 3-6)
+# NUM_BEERS = 2
+# START_DATETIME = datetime(2015, 11, 3)
+# END_DATETIME = datetime(2015, 11, 6, 23, 59, 59, 999999)
+# MIN_LATITUDE = 45.521143
+# MAX_LATITUDE = 45.526412
+# MIN_LONGITUDE = -122.684202
+# MAX_LONGITUDE = -122.671810
+# CREDLY_BADGE_ID = 61628

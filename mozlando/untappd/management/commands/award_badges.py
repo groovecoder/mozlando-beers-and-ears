@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from datetime import datetime
 from email.utils import parsedate
 import hashlib
 import json
@@ -9,61 +8,18 @@ import time
 import urllib
 from os.path import dirname
 
+from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from allauth.socialaccount.models import SocialAccount
 
-
-# See: https://untappd.com/api/docs
-UNTAPPD_BASE_URL = 'https://api.untappd.com/v4'
-UNTAPPD_CLIENT_ID = os.getenv('UNTAPPD_CLIENT_ID', None)
-UNTAPPD_CLIENT_SECRET = os.getenv('UNTAPPD_CLIENT_SECRET', None)
-DEFAULT_CACHE_AGE = int(os.getenv('DEFAULT_CACHE_AGE', 60 * 60 * 24 * 7))
-
-CREDLY_BASE_URL = 'https://api.credly.com/v1.1'
-CREDLY_API_KEY = os.getenv('CREDLY_API_KEY', None)
-CREDLY_API_SECRET = os.getenv('CREDLY_API_SECRET', None)
-CREDLY_USERNAME = os.getenv('CREDLY_USERNAME', None)
-CREDLY_PASSWORD = os.getenv('CREDLY_PASSWORD', None)
-CREDLY_BADGE_ID = 61615
-
-CACHE_PATH_TMPL = 'cache/%s/%s'
-
-# Mozlando values
-NUM_BEERS = 12
-START_DATETIME = datetime(2015, 12, 7)
-END_DATETIME = datetime(2015, 12, 11, 23, 59, 59, 999999)
-MOZLANDO_BEERS_AND_EARS_BADGE = 'mozlando-beers-and-ears'
-MIN_LATITUDE = 28.367444
-MAX_LATITUDE = 28.375647
-MIN_LONGITUDE = -81.553245
-MAX_LONGITUDE = -81.545134
-
-# Test values (Cherry Street in Tulsa Nov 23-27)
-# NUM_BEERS = 2
-# START_DATETIME = datetime(2015, 11, 23)
-# END_DATETIME = datetime(2015, 11, 27, 23, 59, 59, 999999)
-# MIN_LATITUDE = 36.136844
-# MAX_LATITUDE = 36.143845
-# MIN_LONGITUDE = -95.97546
-# MAX_LONGITUDE = -95.940098
-
-# Test values (Portland Nov 3-6)
-# NUM_BEERS = 2
-# START_DATETIME = datetime(2015, 11, 3)
-# END_DATETIME = datetime(2015, 11, 6, 23, 59, 59, 999999)
-# MIN_LATITUDE = 45.521143
-# MAX_LATITUDE = 45.526412
-# MIN_LONGITUDE = -122.684202
-# MAX_LONGITUDE = -122.671810
-# CREDLY_BADGE_ID = 61628
 
 class Command(BaseCommand):
 
   def handle(self, *args, **options):
     emails_to_award = []
 
-    if not UNTAPPD_CLIENT_ID or not UNTAPPD_CLIENT_SECRET:
+    if not settings.UNTAPPD_CLIENT_ID or not settings.UNTAPPD_CLIENT_SECRET:
         print ('You must set UNTAPPD_CLIENT_ID and UNTAPPD_CLIENT_SECRET'
                ' environment variables to use Untappd API.')
         return
@@ -76,7 +32,7 @@ class Command(BaseCommand):
         print 'Fetching user activity for %s' % username
         checkins = untappd_api_get(
             'user/checkins/%s' % username, dict(limit=50), 'activity',
-            DEFAULT_CACHE_AGE
+            settings.DEFAULT_CACHE_AGE
         )
 
         if 'checkins' not in checkins['response']:
@@ -94,19 +50,19 @@ class Command(BaseCommand):
                 print "%s checkin had no location." % checkin_beer['beer_name']
                 continue
             if ( # checked in during Mozlando date/time
-                 START_DATETIME.timetuple() < checkin_timetuple and
-                 checkin_timetuple < END_DATETIME.timetuple()
+                 settings.START_DATETIME.timetuple() < checkin_timetuple and
+                 checkin_timetuple < settings.END_DATETIME.timetuple()
                 ):
                 print 'Match Checkin: Time: {0}'.format(checkin_timetuple)
                 if ( # checked in at Epcot
                  (
-                  MIN_LATITUDE <= checkin_lat and
-                  checkin_lat <= MAX_LATITUDE
+                  settings.MIN_LATITUDE <= checkin_lat and
+                  checkin_lat <= settings.MAX_LATITUDE
                  )
                  and
                  (
-                  MIN_LONGITUDE <= checkin_lng and
-                  checkin_lng <= MAX_LONGITUDE
+                  settings.MIN_LONGITUDE <= checkin_lng and
+                  checkin_lng <= settings.MAX_LONGITUDE
                  )
                    ):
                     print 'Match Checkin: Lat: %s Lng: %s' % (checkin_lat,
@@ -118,15 +74,15 @@ class Command(BaseCommand):
                         beers.append(checkin_beer)
                         beer_ids.append(checkin_beer['bid'])
             # if there are 12 check-ins, add the user's email to the list
-        if len(beers) >= NUM_BEERS:
-            print "Found 2 matching beers; badge time!"
+        if len(beers) >= settings.NUM_BEERS:
+            print "Found %s matching beers; badge time!" % settings.NUM_BEERS
             # add the user's email to the list
             emails_to_award.append(account.user.emailaddress_set.all()[0].email)
 
-    if (not CREDLY_API_KEY
-        or not CREDLY_API_SECRET
-        or not CREDLY_USERNAME
-        or not CREDLY_PASSWORD):
+    if (not settings.CREDLY_API_KEY
+        or not settings.CREDLY_API_SECRET
+        or not settings.CREDLY_USERNAME
+        or not settings.CREDLY_PASSWORD):
         print ('You must set CREDLY_API_KEY, CREDLY_API_SECRET, '
                'CREDLY_USERNAME, and CREDLY_PASSWORD for awarding '
                'badges.')
@@ -136,7 +92,7 @@ class Command(BaseCommand):
             '/authenticate',
             "",
             None,
-            (CREDLY_USERNAME,CREDLY_PASSWORD)
+            (settings.CREDLY_USERNAME,settings.CREDLY_PASSWORD)
         )
         credly_token = json.loads(credly_token_response.content)['data']['token']
         for email_to_award in emails_to_award:
@@ -145,13 +101,13 @@ class Command(BaseCommand):
 
 def untappd_api_url(url, params=None):
     """Append the Untappd client details, if available"""
-    url = '%s/%s' % (UNTAPPD_BASE_URL, url)
+    url = '%s/%s' % (settings.UNTAPPD_BASE_URL, url)
     if not params:
         params = {}
-    if UNTAPPD_CLIENT_ID and UNTAPPD_CLIENT_SECRET:
+    if settings.UNTAPPD_CLIENT_ID and settings.UNTAPPD_CLIENT_SECRET:
         params.update(dict(
-            client_id = UNTAPPD_CLIENT_ID,
-            client_secret = UNTAPPD_CLIENT_SECRET
+            client_id = settings.UNTAPPD_CLIENT_ID,
+            client_secret = settings.UNTAPPD_CLIENT_SECRET
         ))
     if params:
         url = '%s?%s' % (url, urllib.urlencode(params))
@@ -168,7 +124,7 @@ def untappd_api_get(path, params=None, cache_name=False, cache_timeout=3600):
 
     # Build a cache path based on MD5 of URL
     path_hash = hashlib.md5(url).hexdigest()
-    cache_path = CACHE_PATH_TMPL % (cache_name, path_hash)
+    cache_path = settings.CACHE_PATH_TMPL % (cache_name, path_hash)
 
     # Create the cache path, if necessary
     cache_dir = dirname(cache_path)
@@ -198,14 +154,15 @@ def credly_api_post(path, data, token=None, user_pw=None):
         auth = requests.auth.HTTPBasicAuth(*user_pw)
     if token:
         params = {'access_token': token}
-    url = '%s%s?%s' % (CREDLY_BASE_URL, path, urllib.urlencode(params))
+    url = '%s%s?%s' % (settings.CREDLY_BASE_URL,
+                       path, urllib.urlencode(params))
     print 'credly url: %s' % url
     r = requests.post(
         url,
         data,
         headers={
-            'X-Api-Key': CREDLY_API_KEY,
-            'X-Api-Secret': CREDLY_API_SECRET
+            'X-Api-Key': settings.CREDLY_API_KEY,
+            'X-Api-Secret': settings.CREDLY_API_SECRET
         },
         auth=auth
         # verify=False, # To workaround SSL cert issue.
@@ -222,7 +179,7 @@ def award_badge(email, token):
                             'email': email,
                             'first_name': None,
                             'last_name': None,
-                            'badge_id': CREDLY_BADGE_ID
+                            'badge_id': settings.CREDLY_BADGE_ID
                         },
                         token
     )
