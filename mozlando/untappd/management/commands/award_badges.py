@@ -20,28 +20,33 @@ UNTAPPD_CLIENT_ID = os.getenv('UNTAPPD_CLIENT_ID', None)
 UNTAPPD_CLIENT_SECRET = os.getenv('UNTAPPD_CLIENT_SECRET', None)
 DEFAULT_CACHE_AGE = int(os.getenv('DEFAULT_CACHE_AGE', 60 * 60 * 24 * 7))
 
-BADGES_BASE_URL = 'https://badges.mozilla.org/en-US/badges/badge/'
-BADGES_VALET_USERNAME = os.getenv('BADGES_VALET_USERNAME', None)
-BADGES_VALET_PASSWORD = os.getenv('BADGES_VALET_PASSWORD', None)
+CREDLY_BASE_URL = 'https://api.credly.com/v1.1'
+CREDLY_API_KEY = os.getenv('CREDLY_API_KEY', None)
+CREDLY_API_SECRET = os.getenv('CREDLY_API_SECRET', None)
+CREDLY_USERNAME = os.getenv('CREDLY_USERNAME', None)
+CREDLY_PASSWORD = os.getenv('CREDLY_PASSWORD', None)
+CREDLY_BADGE_ID = 61615
 
 CACHE_PATH_TMPL = 'cache/%s/%s'
 
 # Mozlando values
-START_DATETIME = datetime(2015, 12, 7)
-END_DATETIME = datetime(2015, 12, 11, 23, 59, 59, 999999)
-MOZLANDO_BEERS_AND_EARS_BADGE = 'mozlando-beers-and-ears'
-MIN_LATITUDE = 28.367444
-MAX_LATITUDE = 28.375647
-MIN_LONGITUDE = -81.553245
-MAX_LONGITUDE = -81.545134
+# NUM_BEERS = 12
+# START_DATETIME = datetime(2015, 12, 7)
+# END_DATETIME = datetime(2015, 12, 11, 23, 59, 59, 999999)
+# MOZLANDO_BEERS_AND_EARS_BADGE = 'mozlando-beers-and-ears'
+# MIN_LATITUDE = 28.367444
+# MAX_LATITUDE = 28.375647
+# MIN_LONGITUDE = -81.553245
+# MAX_LONGITUDE = -81.545134
 
 # Test values (Cherry Street in Tulsa this week)
-# START_DATETIME = datetime(2015, 11, 23)
-# END_DATETIME = datetime(2015, 11, 27, 23, 59, 59, 999999)
-# MIN_LATITUDE = 36.136844
-# MAX_LATITUDE = 36.143845
-# MIN_LONGITUDE = -95.97546
-# MAX_LONGITUDE = -95.940098
+NUM_BEERS = 2
+START_DATETIME = datetime(2015, 11, 23)
+END_DATETIME = datetime(2015, 11, 27, 23, 59, 59, 999999)
+MIN_LATITUDE = 36.136844
+MAX_LATITUDE = 36.143845
+MIN_LONGITUDE = -95.97546
+MAX_LONGITUDE = -95.940098
 
 
 class Command(BaseCommand):
@@ -61,7 +66,7 @@ class Command(BaseCommand):
 
         print 'Fetching user activity for %s' % username
         checkins = untappd_api_get(
-            'user/checkins/%s' % username, dict(limit=5), 'activity',
+            'user/checkins/%s' % username, dict(limit=50), 'activity',
             DEFAULT_CACHE_AGE
         )
 
@@ -72,7 +77,7 @@ class Command(BaseCommand):
         for checkin in checkins['response']['checkins']['items']:
             checkin_timetuple = parsedate(checkin.get('created_at'))
             checkin_beer = checkin.get('beer')
-            if hasattr(checkin.get('venue'), 'location'):
+            if 'location' in checkin.get('venue'):
                 checkin_location = checkin.get('venue').get('location')
                 checkin_lat = checkin_location.get('lat')
                 checkin_lng = checkin_location.get('lng')
@@ -104,16 +109,29 @@ class Command(BaseCommand):
                         beers.append(checkin_beer)
                         beer_ids.append(checkin_beer['bid'])
             # if there are 12 check-ins, add the user's email to the list
-        if len(beers) >= 2:
+        if len(beers) >= NUM_BEERS:
             print "Found 2 matching beers; badge time!"
             # add the user's email to the list
+            emails_to_award.append(account.user.emailaddress_set.all()[0].email)
 
-            if not BADGES_VALET_USERNAME or not BADGES_VALET_PASSWORD:
-                print ('You must set BADGES_VALET_USERNAME and '
-                       'BADGES_VALET_PASSWORD for awarding badges.')
-                return
-            else:
-                award_badge(MOZLANDO_BEERS_AND_EARS_BADGE, emails_to_award)
+    if (not CREDLY_API_KEY
+        or not CREDLY_API_SECRET
+        or not CREDLY_USERNAME
+        or not CREDLY_PASSWORD):
+        print ('You must set CREDLY_API_KEY, CREDLY_API_SECRET, '
+               'CREDLY_USERNAME, and CREDLY_PASSWORD for awarding '
+               'badges.')
+        return
+    else:
+        credly_token_response = credly_api_post(
+            '/authenticate',
+            "",
+            None,
+            (CREDLY_USERNAME,CREDLY_PASSWORD)
+        )
+        credly_token = json.loads(credly_token_response.content)['data']['token']
+        for email_to_award in emails_to_award:
+            award_badge(email_to_award, credly_token)
 
 
 def untappd_api_url(url, params=None):
@@ -164,20 +182,44 @@ def untappd_api_get(path, params=None, cache_name=False, cache_timeout=3600):
     return data
 
 
-def award_badge(badge_slug, emails):
-    """Award a badge with the specified slug to the specified emails."""
-    print 'Awarding the %s badge.' % badge_slug
-
+def credly_api_post(path, data, token=None, user_pw=None):
+    auth=None
+    params = {}
+    if user_pw:
+        auth = requests.auth.HTTPBasicAuth(*user_pw)
+    if token:
+        params = {'access_token': token}
+    url = '%s%s?%s' % (CREDLY_BASE_URL, path, urllib.urlencode(params))
+    print 'credly url: %s' % url
     r = requests.post(
-        '%s%s/awards' % (BADGES_BASE_URL, badge_slug),
-        data=json.dumps({'emails': emails, 'description': ''}),
-        headers={'content-type': 'application/json'},
-        verify=False, # To workaround SSL cert issue.
-        auth=(BADGES_VALET_USERNAME, BADGES_VALET_PASSWORD),)
+        url,
+        data,
+        headers={
+            'X-Api-Key': CREDLY_API_KEY,
+            'X-Api-Secret': CREDLY_API_SECRET
+        },
+        auth=auth
+        # verify=False, # To workaround SSL cert issue.
+    )
+    return r
+
+
+def award_badge(email, token):
+    """Award a badge with the specified slug to the specified emails."""
+
+    print 'Awarding the badge.'
+    r = credly_api_post('/member_badges',
+                        {
+                            'email': email,
+                            'first_name': None,
+                            'last_name': None,
+                            'badge_id': CREDLY_BADGE_ID
+                        },
+                        token
+    )
 
     if r.status_code != 200:
-        print 'Something went wrong awarding badge %s (Status=%s).' % (
-            badge_slug, r.status_code)
+        print 'Something went wrong awarding badge: '
         print r.content
         return
 
