@@ -98,6 +98,7 @@ class Command(BaseCommand):
         credly_token = json.loads(credly_token_response.content)['data']['token']
 
         # Remove existing badge recipients from emails_to_award
+        print 'Initial badge list: %s' % emails_to_award
         existing_badges_response = credly_api_request(
             'get',
             '/me/badges/given',
@@ -108,10 +109,12 @@ class Command(BaseCommand):
         for existing_badge in existing_badges['data']:
             # First check if its an "orphan" (i.e., un-accepted) badge
             if 'member_orphan' in existing_badge:
+                print 'Removing %s from badge list because they already have it.' % existing_badge['member_orphan']['email']
                 emails_to_award = [email for email in emails_to_award if email != existing_badge['member_orphan']['email']]
             # Now check if its a "member" (i.e., accepted) badge
             elif 'member' in existing_badge:
                 if 'email' in existing_badge['member']:
+                    print 'Removing %s from badge list because they already have it.' % existing_badge['member']['email']
                     emails_to_award = [email for email in emails_to_award if email != existing_badge['member']['email']]
 
         for email_to_award in emails_to_award:
@@ -200,7 +203,7 @@ def credly_api_request(method, path, data, token=None, user_pw=None):
 def award_badge(email, token):
     """Award a badge with the specified slug to the specified emails."""
 
-    print 'Awarding the badge.'
+    print 'Awarding the badge to %s ...' % email
     r = credly_api_request(
         "post",
         '/member_badges',
