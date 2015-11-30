@@ -88,13 +88,32 @@ class Command(BaseCommand):
                'badges.')
         return
     else:
-        credly_token_response = credly_api_post(
+        credly_token_response = credly_api_request(
+            'post',
             '/authenticate',
             "",
             None,
             (settings.CREDLY_USERNAME,settings.CREDLY_PASSWORD)
         )
         credly_token = json.loads(credly_token_response.content)['data']['token']
+
+        # Remove existing badge recipients from emails_to_award
+        existing_badges_response = credly_api_request(
+            'get',
+            '/me/badges/given',
+            {},
+            credly_token
+        )
+        existing_badges = json.loads(existing_badges_response.content)
+        for existing_badge in existing_badges['data']:
+            # First check if its an "orphan" (i.e., un-accepted) badge
+            if 'member_orphan' in existing_badge:
+                emails_to_award = [email for email in emails_to_award if email != existing_badge['member_orphan']['email']]
+            # Now check if its a "member" (i.e., accepted) badge
+            elif 'member' in existing_badge:
+                if 'email' in existing_badge['member']:
+                    emails_to_award = [email for email in emails_to_award if email != existing_badge['member']['email']]
+
         for email_to_award in emails_to_award:
             award_badge(email_to_award, credly_token)
 
@@ -147,19 +166,27 @@ def untappd_api_get(path, params=None, cache_name=False, cache_timeout=3600):
     return data
 
 
-def credly_api_post(path, data, token=None, user_pw=None):
+def credly_api_request(method, path, data, token=None, user_pw=None):
     auth=None
     params = {}
+    request_function = requests.get
+
+    if method == "post":
+        request_function = requests.post
+    elif method == "get":
+        params = data
+
     if user_pw:
         auth = requests.auth.HTTPBasicAuth(*user_pw)
     if token:
-        params = {'access_token': token}
+        params.update({'access_token': token})
     url = '%s%s?%s' % (settings.CREDLY_BASE_URL,
                        path, urllib.urlencode(params))
     print 'credly url: %s' % url
-    r = requests.post(
+
+    r = request_function(
         url,
-        data,
+        params=data,
         headers={
             'X-Api-Key': settings.CREDLY_API_KEY,
             'X-Api-Secret': settings.CREDLY_API_SECRET
@@ -174,14 +201,16 @@ def award_badge(email, token):
     """Award a badge with the specified slug to the specified emails."""
 
     print 'Awarding the badge.'
-    r = credly_api_post('/member_badges',
-                        {
-                            'email': email,
-                            'first_name': None,
-                            'last_name': None,
-                            'badge_id': settings.CREDLY_BADGE_ID
-                        },
-                        token
+    r = credly_api_request(
+        "post",
+        '/member_badges',
+        {
+            'email': email,
+            'first_name': None,
+            'last_name': None,
+            'badge_id': settings.CREDLY_BADGE_ID
+        },
+        token
     )
 
     if r.status_code != 200:
