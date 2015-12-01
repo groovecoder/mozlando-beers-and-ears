@@ -67,7 +67,7 @@
         <tbody>
         {% for account in untappd_accounts %}
           <tr>
-            <td><a href="https://untappd.com/user/{{ account.user.username }}">{{ account.user.username }}</a></td>
+            <td><img src="{{ account.extra_data.response.user.user_avatar }}" style="vertical-align: middle;" width="36" height="36"> <a href="https://untappd.com/user/{{ account.user.username }}">{{ account.user.username }}</a></td>
           </tr>
         {% endfor %}
         </tbody>
