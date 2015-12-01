@@ -7,6 +7,7 @@ import requests
 
 from django.views.generic.base import TemplateView
 
+from allauth.socialaccount.models import SocialAccount
 from allauth.socialaccount.providers.oauth2.client import (OAuth2Client,
                                                            OAuth2Error)
 from allauth.socialaccount.providers.oauth2.views import (OAuth2Adapter,
@@ -68,6 +69,12 @@ class UntappdOAuth2Adapter(OAuth2Adapter):
 
 class HomePageView(TemplateView):
     template_name = 'home.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(HomePageView, self).get_context_data(**kwargs)
+        untappd_accounts = SocialAccount.objects.filter(provider='untappd')
+        context['untappd_accounts'] = untappd_accounts
+        return context
 
 
 class UntappdOAuth2CallbackView(OAuth2CallbackView):
